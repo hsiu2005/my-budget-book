@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>我的記帳本</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#c8b8ff">
+
+
+  <!-- 圖表用：Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(180deg, #f5f3ff 0%, #f9fafb 40%, #f3f4f6 100%);
+      color: #2f2f3a;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-container {
+      width: 100%;              /* 整頁吃滿螢幕 */
+      max-width: 100%;          /* 不再限制容器寬度 */
+      margin: 0 auto;
+      padding: 16px 10px 90px;  /* 左右留一點空白就好 */
+    }
+
+
+    /* ===== Header ===== */
+    .app-header {
+      margin-bottom: 10px;
+      padding-top: 4px;
+    }
+
+    .app-title-row {
+      display: flex;
+      justify-content: flex-start;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .app-title-row h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin: 0;
+      color: #272338;
+    }
+
+    .today-pill-row {
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .today-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(199, 185, 255, 0.18);
+      color: #6d5dd3;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid rgba(199, 185, 255, 0.5);
+    }
+
+    .month-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(209, 213, 219, 0.8);
+      font-size: 0.8rem;
+      color: #4b5563;
+    }
+
+    .month-switch button {
+      border: none;
+      background: transparent;
+      padding: 2px 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+
+    .month-switch span {
+      min-width: 82px;
+      text-align: center;
+    }
+
+    /* ===== Cards ===== */
+    .card {
+      width: 100%;
+      max-width: 640px;
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 18px;
+      padding: 14px 16px;
+      margin: 0 auto 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 12px 30px rgba(148, 163, 184, 0.22);
+      border: 1px solid rgba(200, 200, 220, 0.5);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #3b3b4a;
+    }
+
+    .card-subtitle {
+      font-size: 0.75rem;
+      color: #a0a0b3;
+    }
+
+    /* ===== Summary ===== */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .summary-box {
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: #f4f3ff;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .summary-box.income {
+      background: #ecfdf3;
+    }
+
+    .summary-label {
+      font-size: 0.8rem;
+      color: #7a7a8c;
+    }
+
+    .summary-value {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-top: 2px;
+    }
+
+    .summary-value.expense {
+      color: #d3635b;
+    }
+
+    .summary-value.income {
+      color: #2f855a;
+    }
+
+    /* ===== Form ===== */
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: #4a4a5b;
+      margin-bottom: 2px;
+      display: block;
+    }
+
+    input[type="number"],
+    input[type="date"],
+    select,
+    input[type="text"] {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 12px;
+      border: 1px solid #d4d4e0;
+      font-size: 0.95rem;
+      background: #fafafa;
+      color: #2f2f3a;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #c7b9ff;
+      box-shadow: 0 0 0 1px #c7b9ff;
+      background: #ffffff;
+    }
+
+    .type-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+      background: #f0efff;
+      border-radius: 999px;
+      padding: 2px;
+    }
+
+    .type-btn {
+      flex: 1;
+      padding: 8px 0;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      font-size: 0.9rem;
+      cursor: pointer;
+      color: #66667a;
+    }
+
+    .type-btn.active-expense {
+      background: #fde2d9;
+      color: #b85042;
+      font-weight: 600;
+      box-shadow: 0 1px 4px rgba(248, 173, 145, 0.6);
+    }
+
+    .type-btn.active-income {
+      background: #d1fae5;
+      color: #2f855a;
+      font-weight: 600;
+      box-shadow: 0 1px 4px rgba(110, 231, 183, 0.6);
+    }
+
+    .type-btn.active-transfer {
+      background: #e0e7ff;
+      color: #4c51bf;
+      font-weight: 600;
+      box-shadow: 0 1px 4px rgba(129, 140, 248, 0.5);
+    }
+
+    .submit-btn {
+      margin-top: 6px;
+      background: linear-gradient(135deg, #c7b9ff, #a5b4fc);
+      color: #ffffff;
+      border: none;
+      border-radius: 999px;
+      padding: 11px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(165, 180, 252, 0.7);
+    }
+
+    .submit-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 10px rgba(165, 180, 252, 0.9);
+    }
+
+    /* 子類別 chips */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .chip {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #e5e7f3;
+      font-size: 0.8rem;
+      background: #f9fafb;
+      color: #4b5563;
+      cursor: pointer;
+    }
+
+    .chip-active {
+      background: rgba(199, 185, 255, 0.24);
+      color: #5b4ac8;
+      border-color: rgba(199, 185, 255, 0.8);
+      font-weight: 500;
+    }
+
+    .chip-add {
+      border-style: dashed;
+      color: #9ca3af;
+    }
+
+    /* ===== List ===== */
+    .tx-list {
+      max-height: 360px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+
+    .tx-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #e4e4ef;
+      font-size: 0.9rem;
+      gap: 8px;
+    }
+
+    .tx-item:last-child {
+      border-bottom: none;
+    }
+
+    .tx-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .tx-title {
+      font-weight: 500;
+      color: #333344;
+    }
+
+    .tx-meta {
+      font-size: 0.75rem;
+      color: #8a8aa0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .tx-amount.expense {
+      color: #d3635b;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .tx-amount.income {
+      color: #2f855a;
+      font-weight: 700;
+    }
+
+    .tx-amount.transfer {
+      color: #4c51bf;
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      background: #e5e7f3;
+      color: #55556a;
+    }
+
+    .badge-account {
+      background: #e0e7ff;
+      color: #4c51bf;
+    }
+
+    .badge-person {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .empty-tip {
+      font-size: 0.85rem;
+      color: #a0a0b3;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    /* 交易項目右側的小按鈕區 */
+    .tx-actions {
+      display: flex;
+      flex-direction: row;   /* 橫向排 */
+      gap: 6px;
+      align-items: center;
+      font-size: 0.75rem;
+    }
+
+    /* 膠囊按鈕，共用樣式 */
+    .tx-pill-btn {
+      border: 1px solid #e5e7f3;
+      background: #f9fafb;
+      border-radius: 999px;
+      padding: 3px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+
+    /* 編輯：淡紫色 */
+    .tx-pill-edit {
+      color: #4c51bf;
+      border-color: #e0e7ff;
+      background: #eff3ff;
+    }
+
+    /* 刪除：淡紅色 */
+    .tx-pill-delete {
+      color: #b91c1c;
+      border-color: #fee2e2;
+      background: #fef2f2;
+    }
+
+    /* 按下去時一點點壓下去的感覺 */
+    .tx-pill-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 2px rgba(148, 163, 184, 0.4);
+    }
+
+
+    /* ===== 人際帳 ===== */
+    .person-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e7f3;
+      font-size: 0.9rem;
+    }
+
+    .person-row:last-child {
+      border-bottom: none;
+    }
+
+    .person-name {
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .person-meta {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    .person-amount {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .net-positive {
+      color: #dc2626; /* 他欠我 */
+    }
+
+    .net-negative {
+      color: #2563eb; /* 我欠他 */
+    }
+
+    .net-zero {
+      color: #9ca3af;
+    }
+
+    /* ===== 分頁顯示控制 ===== */
+    .page-hidden {
+      display: none;
+    }
+
+    /* ===== 分析頁圖表 ===== */
+    .chart-container {
+      margin-top: 8px;
+    }
+
+    .chart-container canvas {
+      width: 100%;
+      max-height: 220px;
+    }
+
+    /* ===== Bottom Nav ===== */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: center;
+      padding: 10px 10px 14px;
+      pointer-events: none;
+    }
+
+    .bottom-nav-inner {
+      pointer-events: auto;
+      max-width: 640px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 999px;
+      padding: 6px 8px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 30px rgba(148, 163, 184, 0.35);
+      border: 1px solid rgba(221, 224, 236, 0.9);
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: #707089;
+      font-size: 0.8rem;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .nav-btn.active {
+      background: rgba(199, 185, 255, 0.25);
+      color: #5b4ac8;
+      font-weight: 600;
+    }
+
+    /* 人際新增人 */
+    .small-btn {
+      border-radius: 999px;
+      border: 1px solid #d4d4e0;
+      background: #fafafa;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      white-space: nowrap;
+      color: #4a4a5b;
+    }
+
+    .small-btn:active {
+      background: #ececf5;
+    }
+
+    @media (max-width: 400px) {
+      .card {
+        padding: 12px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-container">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="app-title-row">
+          <h1>我的記帳本</h1>
+        </div>
+        <div class="today-pill-row">
+          <div class="today-pill" id="todayPill">今天</div>
+          <div class="month-switch">
+            <button id="btnMonthPrev" aria-label="前一個月">‹</button>
+            <span id="monthSwitchLabel">2025 年 12 月</span>
+            <button id="btnMonthNext" aria-label="下一個月">›</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- 本月概況卡 (在 記帳 + 分析 頁顯示) -->
+      <section class="card" id="sectionSummary">
+        <div class="card-title">
+          <span>本月概況</span>
+          <span id="currentMonthLabel" class="card-subtitle"></span>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-box">
+            <div class="summary-label">支出</div>
+            <div id="summaryExpense" class="summary-value expense">0</div>
+          </div>
+          <div class="summary-box income">
+            <div class="summary-label">收入</div>
+            <div id="summaryIncome" class="summary-value income">0</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 記帳頁：新增記帳 -->
+      <section class="card" id="sectionForm">
+        <div class="card-title">
+          <span>新增記帳</span>
+        </div>
+
+        <div class="type-toggle">
+          <button type="button" id="btnExpense" class="type-btn active-expense">支出</button>
+          <button type="button" id="btnIncome" class="type-btn">收入</button>
+          <button type="button" id="btnTransfer" class="type-btn">轉帳</button>
+        </div>
+
+        <form id="txForm">
+          <input type="hidden" id="txType" value="expense">
+          <input type="hidden" id="editingTxId" value="">
+          <input type="hidden" id="txSubCategory">
+
+          <div>
+            <label for="txDate">日期</label>
+            <input type="date" id="txDate" required>
+          </div>
+
+          <div>
+            <label for="txAmount">金額</label>
+            <input type="number" id="txAmount" min="1" step="1" required placeholder="輸入金額">
+          </div>
+
+          <div id="normalFields">
+            <div>
+              <label for="txAccount">帳戶</label>
+              <select id="txAccount">
+                <option value="cash">現金</option>
+                <option value="credit_card">信用卡</option>
+                <option value="ipass">iPASS Money</option>
+                <option value="easycard">悠遊卡</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="txCategory">類別</label>
+              <select id="txCategory">
+                <option value="food">餐飲</option>
+                <option value="drink">飲料 / 咖啡</option>
+                <option value="transport">交通</option>
+                <option value="living">生活用品</option>
+                <option value="entertainment">娛樂</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+
+            <div>
+              <label>子類別</label>
+              <div id="subCategoryChips" class="chip-row"></div>
+            </div>
+          </div>
+
+          <div id="transferFields" style="display:none;">
+            <div>
+              <label for="transferFrom">從帳戶</label>
+              <select id="transferFrom">
+                <option value="cash">現金</option>
+                <option value="credit_card">信用卡</option>
+                <option value="ipass">iPASS Money</option>
+                <option value="easycard">悠遊卡</option>
+              </select>
+            </div>
+            <div>
+              <label for="transferTo">到帳戶</label>
+              <select id="transferTo">
+                <option value="ipass">iPASS Money</option>
+                <option value="easycard">悠遊卡</option>
+                <option value="cash">現金</option>
+                <option value="credit_card">信用卡</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label for="txNote">備註（可不填）</label>
+            <input type="text" id="txNote" placeholder="例如：早餐、全聯、儲值悠遊卡">
+          </div>
+
+          <!-- 人際帳欄位 -->
+          <div id="peopleFields">
+            <label>人際帳（可選）</label>
+            <div style="display:flex; gap:6px; margin-bottom:4px;">
+              <select id="personSelect" style="flex:1;">
+                <option value="">（無）</option>
+              </select>
+              <button type="button" id="btnAddPerson" class="small-btn">＋新增對象</button>
+            </div>
+            <select id="relationKind">
+              <option value="">選擇關係（可略過）</option>
+              <option value="lend">我幫他付</option>
+              <option value="collect">他還我錢</option>
+              <option value="borrow">他幫我付</option>
+              <option value="repay">我還他錢</option>
+            </select>
+          </div>
+
+          <button type="submit" class="submit-btn" id="submitBtn">儲存這筆</button>
+        </form>
+      </section>
+
+      <!-- 紀錄頁 -->
+      <section class="card page-hidden" id="sectionList">
+        <div class="card-title">
+          <span>最近紀錄</span>
+        </div>
+        <div id="txList" class="tx-list"></div>
+      </section>
+
+      <!-- 人際頁 -->
+      <section class="card page-hidden" id="sectionPeople">
+        <div class="card-title">
+          <span>人際帳總覽</span>
+        </div>
+        <div id="peopleSummary"></div>
+      </section>
+
+      <!-- 分析頁 -->
+      <section class="card page-hidden" id="sectionAnalysis">
+        <div class="card-title">
+          <span>本月分析</span>
+        </div>
+
+        <div class="chart-container">
+          <div class="card-subtitle" style="margin-bottom:4px;">按類別支出</div>
+          <canvas id="categoryChart"></canvas>
+        </div>
+
+        <div class="chart-container" style="margin-top:12px;">
+          <div class="card-subtitle" style="margin-bottom:4px;">按帳戶支出</div>
+          <canvas id="accountChart"></canvas>
+        </div>
+
+        <div style="margin-top:10px;">
+          <div style="font-size:0.85rem;font-weight:600;margin-bottom:4px;">明細：按類別</div>
+          <div id="analysisByCategory" class="tx-list"></div>
+        </div>
+        <div style="margin-top:8px;">
+          <div style="font-size:0.85rem;font-weight:600;margin-bottom:4px;">明細：按帳戶</div>
+          <div id="analysisByAccount" class="tx-list"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 底部導覽 -->
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        <button class="nav-btn active" data-page="home">記帳</button>
+        <button class="nav-btn" data-page="list">紀錄</button>
+        <button class="nav-btn" data-page="people">人際</button>
+        <button class="nav-btn" data-page="analysis">分析</button>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    /* ===== 資料設定 ===== */
+    const STORAGE_KEY = 'myBudget_transactions_v1';
+    const PERSONS_KEY = 'myBudget_persons_v1';
+    const SUBCATS_KEY = 'myBudget_subcategories_v1';
+
+    const ACCOUNTS = {
+      cash: '現金',
+      credit_card: '信用卡',
+      ipass: 'iPASS Money',
+      easycard: '悠遊卡'
+    };
+
+    const CATEGORIES = {
+      food: '餐飲',
+      drink: '飲料 / 咖啡',
+      transport: '交通',
+      living: '生活用品',
+      entertainment: '娛樂',
+      other: '其他'
+    };
+
+    // 預設子類別
+    const DEFAULT_SUBCATS = {
+      food: ['早餐', '午餐', '晚餐', '宵夜'],
+      drink: ['手搖飲', '咖啡', '茶'],
+      transport: ['公車', '捷運 / 火車', '計程車', '加油'],
+      living: ['日用品', '清潔', '房租', '帳單'],
+      entertainment: ['遊戲', '電影', '聚餐'],
+      other: []
+    };
+
+    let transactions = [];
+    let persons = [];
+    let customSubcats = {}; // {categoryKey: [name1, name2,...]}
+
+    // 目前瀏覽的年月（套用在概況 / 列表 / 分析 / 人際）
+    let currentYear;
+    let currentMonth; // 1-12
+
+    // 編輯狀態
+    let editingTxId = null;
+
+    // 圖表實例
+    let categoryChart = null;
+    let accountChart = null;
+
+    /* ===== localStorage 載入 / 儲存 ===== */
+    function loadJSON(key, fallback) {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return fallback;
+      }
+    }
+
+    function saveJSON(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function loadAllData() {
+      transactions = loadJSON(STORAGE_KEY, []);
+      persons = loadJSON(PERSONS_KEY, []);
+      customSubcats = loadJSON(SUBCATS_KEY, {});
+    }
+
+    function saveTransactions() {
+      saveJSON(STORAGE_KEY, transactions);
+    }
+
+    function savePersons() {
+      saveJSON(PERSONS_KEY, persons);
+    }
+
+    function saveSubcats() {
+      saveJSON(SUBCATS_KEY, customSubcats);
+    }
+
+    /* ===== 小工具 ===== */
+    function formatDate(str) {
+      if (!str) return '';
+      const [y, m, d] = str.split('-');
+      return m + '/' + d;
+    }
+
+    function formatAmount(a) {
+      return Number(a).toLocaleString('zh-TW');
+    }
+
+    function getMonthLabel(y, m) {
+      return `${y} 年 ${m} 月`;
+    }
+
+    function getTodayLabel() {
+      const now = new Date();
+      const m = now.getMonth() + 1;
+      const d = now.getDate();
+      return `今天 ${m}/${d}`;
+    }
+
+    function isSameYearMonth(dateStr, year, month) {
+      if (!dateStr) return false;
+      const [yStr, mStr] = dateStr.split('-');
+      return Number(yStr) === year && Number(mStr) === month;
+    }
+
+    function findPersonName(id) {
+      if (!id) return '';
+      const p = persons.find(p => p.id === id);
+      return p ? p.name : '';
+    }
+
+    function calculatePersonNet(personId) {
+      let net = 0;
+      for (const tx of transactions) {
+        if (!tx.personId || tx.personId !== personId || !tx.relationKind) continue;
+        const amount = Number(tx.amount) || 0;
+        switch (tx.relationKind) {
+          case 'lend':   // 我幫他付 → 他欠我
+            net += amount;
+            break;
+          case 'collect': // 他還我 → 他欠我減少
+            net -= amount;
+            break;
+          case 'borrow': // 他幫我付 → 我欠他
+            net -= amount;
+            break;
+          case 'repay':  // 我還他 → 我欠他減少
+            net += amount;
+            break;
+        }
+      }
+      return net;
+    }
+
+    /* ===== 本月統計 ===== */
+    function calculateSummary(year, month) {
+      let expense = 0;
+      let income = 0;
+
+      for (const tx of transactions) {
+        if (!isSameYearMonth(tx.date, year, month)) continue;
+        if (tx.type === 'expense') {
+          expense += Number(tx.amount);
+        } else if (tx.type === 'income') {
+          income += Number(tx.amount);
+        }
+      }
+      return { expense, income };
+    }
+
+    function calculateBreakdown(year, month) {
+      const byCategory = {};
+      const byAccount = {};
+
+      for (const tx of transactions) {
+        if (!isSameYearMonth(tx.date, year, month)) continue;
+        if (tx.type !== 'expense') continue; // 只看支出
+
+        const amt = Number(tx.amount) || 0;
+        if (!byCategory[tx.category]) byCategory[tx.category] = 0;
+        if (!byAccount[tx.accountId]) byAccount[tx.accountId] = 0;
+        byCategory[tx.category] += amt;
+        byAccount[tx.accountId] += amt;
+      }
+      return { byCategory, byAccount };
+    }
+
+    /* ===== 子類別 chips ===== */
+    function getSubcatsForCategory(cat) {
+      const base = DEFAULT_SUBCATS[cat] || [];
+      const custom = customSubcats[cat] || [];
+      // 去重合併
+      const set = new Set([...base, ...custom]);
+      return Array.from(set);
+    }
+
+    function renderSubCategoryChips() {
+      const catSelect = document.getElementById('txCategory');
+      const chipsContainer = document.getElementById('subCategoryChips');
+      const subInput = document.getElementById('txSubCategory');
+      const currentCat = catSelect.value;
+      const currentSub = subInput.value;
+
+      chipsContainer.innerHTML = '';
+
+      const list = getSubcatsForCategory(currentCat);
+      list.forEach(name => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip';
+        chip.textContent = name;
+        chip.dataset.value = name;
+        if (name === currentSub) chip.classList.add('chip-active');
+
+        chip.addEventListener('click', () => {
+          subInput.value = name;
+          renderSubCategoryChips(); // 重新標記 active
+        });
+
+        chipsContainer.appendChild(chip);
+      });
+
+      // ＋自訂
+      const addChip = document.createElement('button');
+      addChip.type = 'button';
+      addChip.className = 'chip chip-add';
+      addChip.textContent = '＋自訂';
+      addChip.addEventListener('click', () => {
+        const name = window.prompt('輸入子類別名稱，例如：下午茶、聚餐…');
+        if (!name) return;
+        const trimmed = name.trim();
+        if (!trimmed) return;
+
+        if (!customSubcats[currentCat]) customSubcats[currentCat] = [];
+        if (!customSubcats[currentCat].includes(trimmed)) {
+          customSubcats[currentCat].push(trimmed);
+          saveSubcats();
+        }
+        subInput.value = trimmed;
+        renderSubCategoryChips();
+      });
+      chipsContainer.appendChild(addChip);
+    }
+
+    /* ===== Summary 畫面 ===== */
+    function renderSummary() {
+      const labelEl = document.getElementById('currentMonthLabel');
+      labelEl.textContent = getMonthLabel(currentYear, currentMonth);
+
+      const { expense, income } = calculateSummary(currentYear, currentMonth);
+      document.getElementById('summaryExpense').textContent = '-' + formatAmount(expense);
+      document.getElementById('summaryIncome').textContent = '+' + formatAmount(income);
+    }
+
+    /* ===== 紀錄列表 ===== */
+    function renderTransactionList() {
+      const listEl = document.getElementById('txList');
+      listEl.innerHTML = '';
+
+      const list = transactions
+        .filter(tx => isSameYearMonth(tx.date, currentYear, currentMonth))
+        .sort((a, b) => {
+          if (a.date === b.date) return (b.createdAt || 0) - (a.createdAt || 0);
+          return a.date < b.date ? 1 : -1;
+        });
+
+      if (list.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-tip';
+        empty.textContent = '這個月份還沒有紀錄。';
+        listEl.appendChild(empty);
+        return;
+      }
+
+      for (const tx of list) {
+        const item = document.createElement('div');
+        item.className = 'tx-item';
+
+        const main = document.createElement('div');
+        main.className = 'tx-main';
+
+        const title = document.createElement('div');
+        title.className = 'tx-title';
+
+        const meta = document.createElement('div');
+        meta.className = 'tx-meta';
+
+        const dateStr = formatDate(tx.date);
+        let metaHtml = `<span class="badge">${dateStr}</span>`;
+
+        if (tx.type === 'transfer') {
+          const fromName = ACCOUNTS[tx.fromAccountId] || tx.fromAccountId;
+          const toName = ACCOUNTS[tx.toAccountId] || tx.toAccountId;
+          title.textContent = '轉帳';
+          metaHtml += ` <span class="badge badge-account">${fromName} → ${toName}</span>`;
+        } else {
+          const catName = CATEGORIES[tx.category] || '其他';
+          title.textContent = tx.subCategory ? `${catName} · ${tx.subCategory}` : catName;
+          const accountName = ACCOUNTS[tx.accountId] || tx.accountId;
+          metaHtml += ` <span class="badge badge-account">${accountName}</span>`;
+        }
+
+        if (tx.personId && tx.relationKind) {
+          const pname = findPersonName(tx.personId);
+          if (pname) {
+            metaHtml += ` <span class="badge badge-person">${pname}</span>`;
+          }
+        }
+
+        if (tx.note) {
+          metaHtml += ` <span>${tx.note}</span>`;
+        }
+        meta.innerHTML = metaHtml;
+
+        main.appendChild(title);
+        main.appendChild(meta);
+
+        const amountDiv = document.createElement('div');
+        if (tx.type === 'transfer') {
+          amountDiv.className = 'tx-amount transfer';
+          amountDiv.textContent = '⇄ ' + formatAmount(tx.amount);
+        } else {
+          const isExpense = tx.type === 'expense';
+          amountDiv.className = 'tx-amount ' + (isExpense ? 'expense' : 'income');
+          amountDiv.textContent = (isExpense ? '-' : '+') + formatAmount(tx.amount);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'tx-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'tx-pill-btn tx-pill-edit';
+        editBtn.textContent = '編輯';
+        editBtn.addEventListener('click', () => startEditTransaction(tx.id));
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'tx-pill-btn tx-pill-delete';
+        delBtn.textContent = '刪除';
+        delBtn.addEventListener('click', () => deleteTransaction(tx.id));
+
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+
+        item.appendChild(main);
+        item.appendChild(amountDiv);
+        item.appendChild(actions);
+        listEl.appendChild(item);
+      }
+    }
+
+    function deleteTransaction(id) {
+      if (!window.confirm('確定要刪除這筆紀錄嗎？')) return;
+      transactions = transactions.filter(tx => tx.id !== id);
+      saveTransactions();
+      // 若剛好在編輯這筆，也取消編輯
+      if (editingTxId === id) {
+        resetForm();
+      }
+      renderAll();
+    }
+
+    /* ===== 人際頁 ===== */
+    function renderPeopleSummary() {
+      const container = document.getElementById('peopleSummary');
+      container.innerHTML = '';
+
+      if (persons.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-tip';
+        empty.textContent = '尚未建立任何人際對象，上面可以先新增。';
+        container.appendChild(empty);
+        return;
+      }
+
+      for (const p of persons) {
+        const net = calculatePersonNet(p.id);
+
+        const row = document.createElement('div');
+        row.className = 'person-row';
+
+        const left = document.createElement('div');
+        const nameEl = document.createElement('div');
+        nameEl.className = 'person-name';
+        nameEl.textContent = p.name;
+
+        const metaEl = document.createElement('div');
+        metaEl.className = 'person-meta';
+        if (net > 0) {
+          metaEl.textContent = '';
+        } else if (net < 0) {
+          metaEl.textContent = '';
+        } else {
+          metaEl.textContent = '已結清';
+        }
+
+        left.appendChild(nameEl);
+        left.appendChild(metaEl);
+
+        const amountEl = document.createElement('div');
+        amountEl.className = 'person-amount';
+        if (net > 0) {
+          amountEl.classList.add('net-positive');
+          amountEl.textContent = '+' + formatAmount(net);
+        } else if (net < 0) {
+          amountEl.classList.add('net-negative');
+          amountEl.textContent = '-' + formatAmount(-net);
+        } else {
+          amountEl.classList.add('net-zero');
+          amountEl.textContent = '0';
+        }
+
+        row.appendChild(left);
+        row.appendChild(amountEl);
+
+        container.appendChild(row);
+      }
+    }
+
+    /* ===== 分析頁 + 圖表 ===== */
+    function renderAnalysis() {
+      const { byCategory, byAccount } = calculateBreakdown(currentYear, currentMonth);
+      const catEl = document.getElementById('analysisByCategory');
+      const accEl = document.getElementById('analysisByAccount');
+
+      catEl.innerHTML = '';
+      accEl.innerHTML = '';
+
+      const catKeys = Object.keys(byCategory);
+      if (catKeys.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-tip';
+        empty.textContent = '這個月份尚無支出紀錄。';
+        catEl.appendChild(empty);
+        const empty2 = empty.cloneNode(true);
+        accEl.appendChild(empty2);
+      } else {
+        const sortedCat = catKeys.sort((a, b) => byCategory[b] - byCategory[a]);
+        for (const cat of sortedCat) {
+          const item = document.createElement('div');
+          item.className = 'tx-item';
+
+          const main = document.createElement('div');
+          main.className = 'tx-main';
+
+          const title = document.createElement('div');
+          title.className = 'tx-title';
+          title.textContent = CATEGORIES[cat] || cat;
+
+          const meta = document.createElement('div');
+          meta.className = 'tx-meta';
+          meta.textContent = '本月此類支出';
+
+          const amountDiv = document.createElement('div');
+          amountDiv.className = 'tx-amount expense';
+          amountDiv.textContent = '-' + formatAmount(byCategory[cat]);
+
+          main.appendChild(title);
+          main.appendChild(meta);
+          item.appendChild(main);
+          item.appendChild(amountDiv);
+          catEl.appendChild(item);
+        }
+
+        const accKeys = Object.keys(byAccount).sort((a, b) => byAccount[b] - byAccount[a]);
+        for (const acc of accKeys) {
+          const item = document.createElement('div');
+          item.className = 'tx-item';
+
+          const main = document.createElement('div');
+          main.className = 'tx-main';
+
+          const title = document.createElement('div');
+          title.className = 'tx-title';
+          title.textContent = ACCOUNTS[acc] || acc;
+
+          const meta = document.createElement('div');
+          meta.className = 'tx-meta';
+          meta.textContent = '本月此帳戶支出';
+
+          const amountDiv = document.createElement('div');
+          amountDiv.className = 'tx-amount expense';
+          amountDiv.textContent = '-' + formatAmount(byAccount[acc]);
+
+          main.appendChild(title);
+          main.appendChild(meta);
+          item.appendChild(main);
+          item.appendChild(amountDiv);
+          accEl.appendChild(item);
+        }
+      }
+
+      updateCharts(byCategory, byAccount);
+    }
+
+    function updateCharts(byCategory, byAccount) {
+      if (!window.Chart) return;
+
+      const catCanvas = document.getElementById('categoryChart');
+      const accCanvas = document.getElementById('accountChart');
+
+      const catLabels = Object.keys(byCategory).map(k => CATEGORIES[k] || k);
+      const catData = Object.keys(byCategory).map(k => byCategory[k]);
+
+      const accLabels = Object.keys(byAccount).map(k => ACCOUNTS[k] || k);
+      const accData = Object.keys(byAccount).map(k => byAccount[k]);
+
+      const palette = [
+        '#c7b9ff', '#a5b4fc', '#93c5fd', '#6ee7b7',
+        '#fde68a', '#fca5a5', '#f9a8d4'
+      ];
+
+      if (categoryChart) categoryChart.destroy();
+      if (accountChart) accountChart.destroy();
+
+      categoryChart = new Chart(catCanvas, {
+        type: 'pie',
+        data: {
+          labels: catLabels,
+          datasets: [{
+            data: catData,
+            backgroundColor: palette,
+          }]
+        },
+        options: {
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 12 }
+            }
+          }
+        }
+      });
+
+      accountChart = new Chart(accCanvas, {
+        type: 'bar',
+        data: {
+          labels: accLabels,
+          datasets: [{
+            data: accData,
+            backgroundColor: palette.slice(0, accLabels.length),
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    /* ===== 人員選單 ===== */
+    function renderPersonSelect() {
+      const select = document.getElementById('personSelect');
+      const current = select.value;
+      select.innerHTML = '<option value="">（無）</option>';
+      for (const p of persons) {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      }
+      if (current) select.value = current;
+    }
+
+    function renderAll() {
+      renderSummary();
+      renderTransactionList();
+      renderPeopleSummary();
+      renderAnalysis();
+      renderPersonSelect();
+    }
+
+    /* ===== 分頁切換 ===== */
+    const PAGE_CONFIG = {
+      home: ['sectionSummary', 'sectionForm'],
+      list: ['sectionList'],
+      people: ['sectionPeople'],
+      analysis: ['sectionSummary', 'sectionAnalysis']
+    };
+
+    function setActivePage(pageKey) {
+      const allSections = ['sectionSummary', 'sectionForm', 'sectionList', 'sectionPeople', 'sectionAnalysis'];
+      const show = PAGE_CONFIG[pageKey] || [];
+
+      allSections.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (show.includes(id)) el.classList.remove('page-hidden');
+        else el.classList.add('page-hidden');
+      });
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-page') === pageKey);
+      });
+    }
+
+    /* ===== 表單 & 編輯 ===== */
+    function setFormMode(mode) {
+      const txTypeInput = document.getElementById('txType');
+      const btnExpense = document.getElementById('btnExpense');
+      const btnIncome = document.getElementById('btnIncome');
+      const btnTransfer = document.getElementById('btnTransfer');
+      const normalFields = document.getElementById('normalFields');
+      const transferFields = document.getElementById('transferFields');
+
+      txTypeInput.value = mode;
+      btnExpense.classList.remove('active-expense');
+      btnIncome.classList.remove('active-income');
+      btnTransfer.classList.remove('active-transfer');
+
+      if (mode === 'expense') {
+        btnExpense.classList.add('active-expense');
+        normalFields.style.display = '';
+        transferFields.style.display = 'none';
+      } else if (mode === 'income') {
+        btnIncome.classList.add('active-income');
+        normalFields.style.display = '';
+        transferFields.style.display = 'none';
+      } else {
+        btnTransfer.classList.add('active-transfer');
+        normalFields.style.display = 'none';
+        transferFields.style.display = '';
+      }
+    }
+
+    function resetForm() {
+      const form = document.getElementById('txForm');
+      const today = new Date().toISOString().slice(0, 10);
+      form.reset();
+      document.getElementById('txDate').value = today;
+      document.getElementById('editingTxId').value = '';
+      document.getElementById('txSubCategory').value = '';
+      editingTxId = null;
+      document.getElementById('submitBtn').textContent = '儲存這筆';
+      setFormMode('expense');
+      renderSubCategoryChips();
+    }
+
+    function startEditTransaction(id) {
+      const tx = transactions.find(t => t.id === id);
+      if (!tx) return;
+
+      editingTxId = id;
+      document.getElementById('editingTxId').value = id;
+
+      document.getElementById('txDate').value = tx.date || '';
+      document.getElementById('txAmount').value = tx.amount || '';
+      document.getElementById('txNote').value = tx.note || '';
+      document.getElementById('personSelect').value = tx.personId || '';
+      document.getElementById('relationKind').value = tx.relationKind || '';
+
+      if (tx.type === 'transfer') {
+        setFormMode('transfer');
+        document.getElementById('transferFrom').value = tx.fromAccountId;
+        document.getElementById('transferTo').value = tx.toAccountId;
+      } else {
+        setFormMode(tx.type);
+        document.getElementById('txAccount').value = tx.accountId;
+        document.getElementById('txCategory').value = tx.category || 'other';
+        document.getElementById('txSubCategory').value = tx.subCategory || '';
+        renderSubCategoryChips();
+      }
+
+      document.getElementById('submitBtn').textContent = '儲存修改';
+      // 切換到記帳頁
+      setActivePage('home');
+      // 滾到表單
+      document.getElementById('sectionForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function setupForm() {
+      const form = document.getElementById('txForm');
+      const btnExpense = document.getElementById('btnExpense');
+      const btnIncome = document.getElementById('btnIncome');
+      const btnTransfer = document.getElementById('btnTransfer');
+      const btnAddPerson = document.getElementById('btnAddPerson');
+      const catSelect = document.getElementById('txCategory');
+
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('txDate').value = today;
+
+      setFormMode('expense');
+      renderSubCategoryChips();
+
+      btnExpense.addEventListener('click', () => setFormMode('expense'));
+      btnIncome.addEventListener('click', () => setFormMode('income'));
+      btnTransfer.addEventListener('click', () => setFormMode('transfer'));
+
+      catSelect.addEventListener('change', () => {
+        document.getElementById('txSubCategory').value = '';
+        renderSubCategoryChips();
+      });
+
+      btnAddPerson.addEventListener('click', () => {
+        const name = window.prompt('請輸入對象名稱（例如：小明、社團 A）：');
+        if (!name) return;
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const p = { id: 'p_' + Date.now(), name: trimmed, createdAt: Date.now() };
+        persons.push(p);
+        savePersons();
+        renderPersonSelect();
+        renderPeopleSummary();
+        document.getElementById('personSelect').value = p.id;
+      });
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const mode = document.getElementById('txType').value;
+        const amountVal = document.getElementById('txAmount').value;
+        const date = document.getElementById('txDate').value;
+        const note = document.getElementById('txNote').value.trim();
+        const personId = document.getElementById('personSelect').value || null;
+        const relationKind = document.getElementById('relationKind').value || null;
+
+        if (!amountVal || Number(amountVal) <= 0) {
+          alert('金額要大於 0 喔');
+          return;
+        }
+
+        const amount = Number(amountVal);
+        const now = Date.now();
+
+        let tx = null;
+
+        if (mode === 'transfer') {
+          const fromAccountId = document.getElementById('transferFrom').value;
+          const toAccountId = document.getElementById('transferTo').value;
+          if (fromAccountId === toAccountId) {
+            alert('轉出與轉入帳戶不能一樣');
+            return;
+          }
+          tx = {
+            id: editingTxId || ('tx_' + now),
+            type: 'transfer',
+            amount,
+            fromAccountId,
+            toAccountId,
+            category: 'transfer',
+            subCategory: null,
+            accountId: null,
+            note,
+            date,
+            createdAt: editingTxId ? (transactions.find(t => t.id === editingTxId)?.createdAt || now) : now,
+            personId,
+            relationKind
+          };
+        } else {
+          const accountId = document.getElementById('txAccount').value;
+          const category = document.getElementById('txCategory').value;
+          const subCategory = document.getElementById('txSubCategory').value || null;
+
+          tx = {
+            id: editingTxId || ('tx_' + now),
+            type: mode,
+            amount,
+            accountId,
+            category,
+            subCategory,
+            fromAccountId: null,
+            toAccountId: null,
+            note,
+            date,
+            createdAt: editingTxId ? (transactions.find(t => t.id === editingTxId)?.createdAt || now) : now,
+            personId,
+            relationKind
+          };
+        }
+
+        if (editingTxId) {
+          // 修改
+          const idx = transactions.findIndex(t => t.id === editingTxId);
+          if (idx >= 0) transactions[idx] = tx;
+        } else {
+          // 新增
+          transactions.push(tx);
+        }
+
+        saveTransactions();
+        resetForm();
+        renderAll();
+      });
+    }
+
+    /* ===== 月份切換 ===== */
+    function setupMonthSwitch() {
+      const now = new Date();
+      currentYear = now.getFullYear();
+      currentMonth = now.getMonth() + 1;
+
+      const label = document.getElementById('monthSwitchLabel');
+      label.textContent = getMonthLabel(currentYear, currentMonth);
+
+      document.getElementById('btnMonthPrev').addEventListener('click', () => {
+        currentMonth--;
+        if (currentMonth === 0) {
+          currentMonth = 12;
+          currentYear--;
+        }
+        label.textContent = getMonthLabel(currentYear, currentMonth);
+        renderAll();
+      });
+
+      document.getElementById('btnMonthNext').addEventListener('click', () => {
+        currentMonth++;
+        if (currentMonth === 13) {
+          currentMonth = 1;
+          currentYear++;
+        }
+        label.textContent = getMonthLabel(currentYear, currentMonth);
+        renderAll();
+      });
+    }
+
+    /* ===== Bottom nav ===== */
+    function setupBottomNav() {
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const page = btn.getAttribute('data-page');
+          setActivePage(page);
+        });
+      });
+    }
+
+    /* ===== 初始化 ===== */
+    function init() {
+      loadAllData();
+      setupMonthSwitch();
+      setupForm();
+      setupBottomNav();
+
+      document.getElementById('todayPill').textContent = getTodayLabel();
+      renderAll();
+      setActivePage('home');
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('Service Worker Registered'))
+        .catch(err => console.error('Service Worker Failed:', err));
+    });
+  }
+  </script>
+
+</body>
+</html>
+
+{
+  "name": "我的記帳本",
+  "short_name": "記帳本",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#c8b8ff",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
+const CACHE_NAME = 'my-budget-v1';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
+];
+
+// 安裝時快取必要資源
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(ASSETS);
+    })
+  );
+});
+
+// 啟用時清掉舊版快取（如果有的話）
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      );
+    })
+  );
+});
+
+// 讀取時優先用快取，沒有再用網路
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(res => {
+      return res || fetch(event.request);
+    })
+  );
+});
